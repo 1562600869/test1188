@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>民宿管理系统</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif; background: #f5f7fa; color: #333; }
+.header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+.header h1 { font-size: 24px; font-weight: 600; }
+.header p { margin-top: 6px; opacity: 0.9; font-size: 14px; }
+.container { padding: 24px; max-width: 1400px; margin: 0 auto; }
+.tabs { display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap; }
+.tab { padding: 10px 20px; border: none; background: white; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+.tab:hover { background: #eef0ff; }
+.tab.active { background: #667eea; color: white; box-shadow: 0 2px 8px rgba(102,126,234,0.4); }
+.card { background: white; border-radius: 12px; padding: 24px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+.card-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+.btn { padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; gap: 4px; }
+.btn-primary { background: #667eea; color: white; }
+.btn-primary:hover { background: #5a6fd8; }
+.btn-success { background: #48bb78; color: white; }
+.btn-success:hover { background: #38a169; }
+.btn-danger { background: #f56565; color: white; }
+.btn-danger:hover { background: #e53e3e; }
+.btn-warning { background: #ed8936; color: white; }
+.btn-warning:hover { background: #dd6b20; }
+.btn-default { background: #e2e8f0; color: #4a5568; }
+.btn-default:hover { background: #cbd5e0; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+th { background: #f7fafc; font-weight: 600; color: #4a5568; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+tr:hover { background: #f7fafc; }
+.badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.badge-success { background: #c6f6d5; color: #22543d; }
+.badge-warning { background: #feebc8; color: #744210; }
+.badge-danger { background: #fed7d7; color: #742a2a; }
+.badge-info { background: #bee3f8; color: #2a4365; }
+.badge-default { background: #e2e8f0; color: #2d3748; }
+.status-空闲 { background: #c6f6d5; color: #22543d; }
+.status-入住 { background: #fed7d7; color: #742a2a; }
+.status-维修 { background: #e2e8f0; color: #2d3748; }
+.status-已预订 { background: #bee3f8; color: #2a4365; }
+.status-已入住 { background: #fed7d7; color: #742a2a; }
+.status-已退房 { background: #c6f6d5; color: #22543d; }
+.grid { display: grid; gap: 16px; }
+.grid-2 { grid-template-columns: repeat(2, 1fr); }
+.grid-4 { grid-template-columns: repeat(4, 1fr); }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 500; color: #4a5568; }
+.form-group input, .form-group select { width: 100%; padding: 9px 12px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 13px; transition: border 0.2s; }
+.form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+.row { display: flex; gap: 16px; }
+.row .form-group { flex: 1; }
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+.modal-overlay.active { display: flex; }
+.modal { background: white; border-radius: 12px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
+.modal-header { padding: 20px 24px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+.modal-header h3 { font-size: 16px; font-weight: 600; }
+.modal-body { padding: 24px; }
+.modal-footer { padding: 16px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 10px; }
+.close-btn { background: none; border: none; font-size: 24px; cursor: pointer; color: #a0aec0; line-height: 1; }
+.close-btn:hover { color: #4a5568; }
+.empty { text-align: center; padding: 40px; color: #a0aec0; font-size: 14px; }
+.stats-card { text-align: center; padding: 20px; border-radius: 10px; background: linear-gradient(135deg, #f5f7fa 0%, #e4e8f0 100%); }
+.stats-card .value { font-size: 28px; font-weight: 700; color: #667eea; }
+.stats-card .label { font-size: 12px; color: #718096; margin-top: 6px; }
+.price { color: #e53e3e; font-weight: 600; }
+.notification { position: fixed; top: 20px; right: 20px; padding: 14px 20px; border-radius: 8px; color: white; font-size: 14px; z-index: 2000; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s; }
+.notification.success { background: #48bb78; }
+.notification.error { background: #f56565; }
+@keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+.actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.room-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+.room-card { border: 2px solid #e2e8f0; border-radius: 10px; padding: 16px; cursor: pointer; transition: all 0.2s; background: white; }
+.room-card:hover { border-color: #667eea; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(102,126,234,0.2); }
+.room-card .room-no { font-size: 20px; font-weight: 700; color: #2d3748; }
+.room-card .room-type { font-size: 12px; color: #718096; margin: 4px 0 8px; }
+.room-card .room-price { font-size: 16px; font-weight: 600; color: #e53e3e; }
+.room-card .room-info { font-size: 11px; color: #a0aec0; margin-top: 6px; }
+.room-card.维修 { border-color: #e2e8f0; opacity: 0.6; cursor: not-allowed; background: #f7fafc; }
+.room-card.入住 { border-color: #f56565; }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🏡 民宿房间预订与入住管理系统</h1>
+  <p id="currentDate"></p>
+</div>
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" data-tab="dashboard">📊 今日概览</button>
+    <button class="tab" data-tab="rooms">🛏️ 房间管理</button>
+    <button class="tab" data-tab="bookings">📋 预订管理</button>
+    <button class="tab" data-tab="booking-form">➕ 新建预订</button>
+    <button class="tab" data-tab="stats">📈 月度统计</button>
+  </div>
+
+  <div id="dashboard" class="tab-content">
+    <div class="card">
+      <div class="card-title">今日数据</div>
+      <div class="grid grid-4" id="dashboardStats"></div>
+    </div>
+    <div class="grid grid-2">
+      <div class="card">
+        <div class="card-title">今日入住 <span class="badge badge-info" id="todayCheckInCount">0</span></div>
+        <div id="todayCheckInTable"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">今日退房 <span class="badge badge-info" id="todayCheckOutCount">0</span></div>
+        <div id="todayCheckOutTable"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="rooms" class="tab-content" style="display:none">
+    <div class="card">
+      <div class="card-title">
+        房间列表
+        <button class="btn btn-primary" onclick="openRoomModal()">+ 添加房间</button>
+      </div>
+      <table id="roomsTable">
+        <thead>
+          <tr><th>房间号</th><th>类型</th><th>价格(元/晚)</th><th>最大入住</th><th>状态</th><th>操作</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="bookings" class="tab-content" style="display:none">
+    <div class="card">
+      <div class="card-title">全部预订记录</div>
+      <table id="bookingsTable">
+        <thead>
+          <tr><th>ID</th><th>客人</th><th>电话</th><th>房间</th><th>入住日期</th><th>离店日期</th><th>人数</th><th>总价</th><th>状态</th><th>操作</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="booking-form" class="tab-content" style="display:none">
+    <div class="card">
+      <div class="card-title">新建预订</div>
+      <form id="bookingForm">
+        <div class="row">
+          <div class="form-group"><label>客人姓名</label><input type="text" name="guest_name" required></div>
+          <div class="form-group"><label>手机号码</label><input type="text" name="guest_phone" required></div>
+        </div>
+        <div class="row">
+          <div class="form-group"><label>入住日期</label><input type="date" name="check_in_date" required></div>
+          <div class="form-group"><label>离店日期</label><input type="date" name="check_out_date" required></div>
+        </div>
+        <div class="form-group"><label>入住人数</label><input type="number" name="guest_count" min="1" value="1" required></div>
+        <div class="form-group"><label>选择房间（点击选择，维修状态不可选）</label></div>
+        <div class="room-grid" id="roomSelection"></div>
+        <input type="hidden" name="room_id" id="selectedRoomId">
+        <div style="margin-top:20px">
+          <button type="submit" class="btn btn-primary">提交预订</button>
+          <button type="reset" class="btn btn-default" onclick="document.getElementById('selectedRoomId').value='';renderRoomSelection()">重置</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="stats" class="tab-content" style="display:none">
+    <div class="card">
+      <div class="card-title">本月各房间类型入住统计</div>
+      <table id="statsTable">
+        <thead>
+          <tr><th>房间类型</th><th>入住次数</th><th>收入（元）</th></tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="roomModal">
+  <div class="modal">
+    <div class="modal-header"><h3 id="roomModalTitle">添加房间</h3><button class="close-btn" onclick="closeModal('roomModal')">&times;</button></div>
+    <div class="modal-body">
+      <form id="roomForm">
+        <input type="hidden" name="id">
+        <div class="row">
+          <div class="form-group"><label>房间号</label><input type="text" name="room_number" required></div>
+          <div class="form-group"><label>房间类型</label>
+            <select name="room_type" required>
+              <option value="标准间">标准间</option>
+              <option value="大床房">大床房</option>
+              <option value="家庭房">家庭房</option>
+              <option value="套房">套房</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="form-group"><label>每晚价格（元）</label><input type="number" name="price_yuan" min="1" step="0.01" required></div>
+          <div class="form-group"><label>最大入住人数</label><input type="number" name="max_guests" min="1" required></div>
+        </div>
+        <div class="form-group"><label>状态</label>
+          <select name="status" required>
+            <option value="空闲">空闲</option>
+            <option value="入住">入住</option>
+            <option value="维修">维修</option>
+          </select>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-default" onclick="closeModal('roomModal')">取消</button>
+      <button class="btn btn-primary" onclick="submitRoomForm()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var API = '';
+var allRooms = [];
+
+function showNotification(msg, type) {
+  if (!type) type = 'success';
+  var n = document.createElement('div');
+  n.className = 'notification ' + type;
+  n.textContent = msg;
+  document.body.appendChild(n);
+  setTimeout(function() { n.remove(); }, 3000);
+}
+
+async function request(url, options) {
+  if (!options) options = {};
+  var headers = { 'Content-Type': 'application/json' };
+  if (options.headers) {
+    for (var k in options.headers) headers[k] = options.headers[k];
+  }
+  var res = await fetch(API + url, {
+    headers: headers,
+    method: options.method,
+    body: options.body ? JSON.stringify(options.body) : undefined
+  });
+  var data = await res.json();
+  if (!data.success) throw new Error(data.message || '请求失败');
+  return data.data;
+}
+
+function formatFen(fen) {
+  return (fen / 100).toFixed(2);
+}
+
+function yuanToFen(yuan) {
+  return Math.round(parseFloat(yuan) * 100);
+}
+
+function updateCurrentDate() {
+  var now = new Date();
+  var opts = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+  document.getElementById('currentDate').textContent = now.toLocaleDateString('zh-CN', opts) + ' ' + now.toLocaleTimeString('zh-CN');
+}
+
+var tabBtns = document.querySelectorAll('.tab');
+for (var i = 0; i < tabBtns.length; i++) {
+  tabBtns[i].addEventListener('click', function() {
+    var tabs = document.querySelectorAll('.tab');
+    for (var j = 0; j < tabs.length; j++) tabs[j].classList.remove('active');
+    var contents = document.querySelectorAll('.tab-content');
+    for (var k = 0; k < contents.length; k++) contents[k].style.display = 'none';
+    this.classList.add('active');
+    var target = this.dataset.tab;
+    document.getElementById(target).style.display = 'block';
+    if (target === 'dashboard') loadDashboard();
+    if (target === 'rooms') loadRooms();
+    if (target === 'bookings') loadBookings();
+    if (target === 'stats') loadStats();
+    if (target === 'booking-form') renderRoomSelection();
+  });
+}
+
+async function loadDashboard() {
+  try {
+    var checkIn = await request('/api/today-checkin');
+    var checkOut = await request('/api/today-checkout');
+    var rooms = await request('/api/rooms');
+    var freeCount = 0, occupiedCount = 0;
+    for (var i = 0; i < rooms.length; i++) {
+      if (rooms[i].status === '空闲') freeCount++;
+      if (rooms[i].status === '入住') occupiedCount++;
+    }
+    document.getElementById('dashboardStats').innerHTML =
+      '<div class="stats-card"><div class="value">' + rooms.length + '</div><div class="label">总房间数</div></div>' +
+      '<div class="stats-card"><div class="value" style="color:#48bb78">' + freeCount + '</div><div class="label">空闲房间</div></div>' +
+      '<div class="stats-card"><div class="value" style="color:#f56565">' + occupiedCount + '</div><div class="label">已入住</div></div>' +
+      '<div class="stats-card"><div class="value" style="color:#ed8936">' + checkIn.length + '</div><div class="label">今日待入住</div></div>';
+    document.getElementById('todayCheckInCount').textContent = checkIn.length;
+    document.getElementById('todayCheckOutCount').textContent = checkOut.length;
+    renderBookingList(checkIn, 'todayCheckInTable', true);
+    renderBookingList(checkOut, 'todayCheckOutTable', false);
+  } catch (e) { showNotification(e.message, 'error'); }
+}
+
+function renderBookingList(bookings, containerId, isCheckIn) {
+  var el = document.getElementById(containerId);
+  if (bookings.length === 0) { el.innerHTML = '<div class="empty">暂无记录</div>'; return; }
+  var html = '<table style="width:100%"><thead><tr><th>房间</th><th>客人</th><th>电话</th><th>入住/离店</th><th>人数</th><th>状态</th><th>操作</th></tr></thead><tbody>';
+  for (var i = 0; i < bookings.length; i++) {
+    var b = bookings[i];
+    var actions = '';
+    if (isCheckIn && b.status === '已预订') {
+      actions = '<button class="btn btn-success btn-sm" onclick="doCheckIn(' + b.id + ')">办理入住</button>';
+    }
+    if (!isCheckIn && b.status === '已入住') {
+      actions = '<button class="btn btn-warning btn-sm" onclick="doCheckOut(' + b.id + ')">办理退房</button>';
+    }
+    html += '<tr>' +
+      '<td><strong>' + b.room_number + '</strong><br><small style="color:#718096">' + b.room_type + '</small></td>' +
+      '<td>' + b.guest_name + '</td>' +
+      '<td>' + b.guest_phone + '</td>' +
+      '<td><small>' + b.check_in_date + ' ~<br>' + b.check_out_date + '</small></td>' +
+      '<td>' + b.guest_count + '人</td>' +
+      '<td><span class="badge status-' + b.status + '">' + b.status + '</span></td>' +
+      '<td><div class="actions">' + actions + '</div></td>' +
+      '</tr>';
+  }
+  html += '</tbody></table>';
+  el.innerHTML = html;
+}
+
+async function loadRooms() {
+  try {
+    allRooms = await request('/api/rooms');
+    var tbody = document.querySelector('#roomsTable tbody');
+    var html = '';
+    for (var i = 0; i < allRooms.length; i++) {
+      var r = allRooms[i];
+      html += '<tr>' +
+        '<td><strong>' + r.room_number + '</strong></td>' +
+        '<td>' + r.room_type + '</td>' +
+        '<td>¥' + formatFen(r.price_per_night) + '</td>' +
+        '<td>' + r.max_guests + '人</td>' +
+        '<td><span class="badge status-' + r.status + '">' + r.status + '</span></td>' +
+        '<td><div class="actions">' +
+        '<button class="btn btn-default btn-sm" onclick="editRoom(' + r.id + ')">编辑</button> ' +
+        '<button class="btn btn-danger btn-sm" onclick="deleteRoom(' + r.id + ')">删除</button>' +
+        '</div></td>' +
+        '</tr>';
+    }
+    tbody.innerHTML = html;
+  } catch (e) { showNotification(e.message, 'error'); }
+}
+
+async function loadBookings() {
+  try {
+    var bookings = await request('/api/bookings');
+    var tbody = document.querySelector('#bookingsTable tbody');
+    if (bookings.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" class="empty">暂无预订记录</td></tr>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < bookings.length; i++) {
+      var b = bookings[i];
+      var actions = '';
+      if (b.status === '已预订') actions = '<button class="btn btn-success btn-sm" onclick="doCheckIn(' + b.id + ')">入住</button>';
+      if (b.status === '已入住') actions = '<button class="btn btn-warning btn-sm" onclick="doCheckOut(' + b.id + ')">退房</button>';
+      html += '<tr>' +
+        '<td>#' + b.id + '</td>' +
+        '<td>' + b.guest_name + '</td>' +
+        '<td>' + b.guest_phone + '</td>' +
+        '<td><strong>' + b.room_number + '</strong> <small style="color:#718096">' + b.room_type + '</small></td>' +
+        '<td>' + b.check_in_date + '</td>' +
+        '<td>' + b.check_out_date + '</td>' +
+        '<td>' + b.guest_count + '人</td>' +
+        '<td class="price">¥' + formatFen(b.total_price) + '</td>' +
+        '<td><span class="badge status-' + b.status + '">' + b.status + '</span></td>' +
+        '<td><div class="actions">' + actions + '</div></td>' +
+        '</tr>';
+    }
+    tbody.innerHTML = html;
+  } catch (e) { showNotification(e.message, 'error'); }
+}
+
+async function loadStats() {
+  try {
+    var stats = await request('/api/monthly-stats');
+    var tbody = document.querySelector('#statsTable tbody');
+    var tfoot = document.querySelector('#statsTable tfoot');
+    var totalStays = 0, totalRev = 0;
+    var html = '';
+    for (var i = 0; i < stats.length; i++) {
+      var s = stats[i];
+      totalStays += s.stay_count;
+      totalRev += s.total_revenue;
+      html += '<tr>' +
+        '<td><strong>' + s.room_type + '</strong></td>' +
+        '<td>' + s.stay_count + ' 次</td>' +
+        '<td class="price">¥' + formatFen(s.total_revenue) + '</td>' +
+        '</tr>';
+    }
+    tbody.innerHTML = html;
+    tfoot.innerHTML = '<tr style="background:#f7fafc;font-weight:700">' +
+      '<td>合计</td><td>' + totalStays + ' 次</td><td class="price">¥' + formatFen(totalRev) + '</td>' +
+      '</tr>';
+  } catch (e) { showNotification(e.message, 'error'); }
+}
+
+function openRoomModal(room) {
+  document.getElementById('roomModalTitle').textContent = room ? '编辑房间' : '添加房间';
+  var form = document.getElementById('roomForm');
+  form.reset();
+  form.id.value = room ? room.id : '';
+  if (room) {
+    form.room_number.value = room.room_number;
+    form.room_type.value = room.room_type;
+    form.price_yuan.value = (room.price_per_night / 100).toFixed(2);
+    form.max_guests.value = room.max_guests;
+    form.status.value = room.status;
+  }
+  document.getElementById('roomModal').classList.add('active');
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+async function editRoom(id) {
+  try {
+    var room = await request('/api/rooms/' + id);
+    openRoomModal(room);
+  } catch (e) { showNotification(e.message, 'error'); }
+}
+
+async function submitRoomForm() {
+  var form = document.getElementById('roomForm');
+  var body = {
+    room_number: form.room_number.value,
+    room_type: form.room_type.value,
+    price_per_night: yuanToFen(form.price_yuan.value),
+    max_guests: parseInt(form.max_guests.value),
+    status: form.status.value
+  };
+  try {
+    if (form.id.value) {
+      await request('/api/rooms/' + form.id.value, { method: 'PUT', body: body });
+      showNotification('房间更新成功');
+    } else {
+      await request('/api/rooms', { method: 'POST', body: body });
+      showNotification('房间添加成功');
+    }
+    closeModal('roomModal');
+    loadRooms();
+  } catch (e) { showNotification(e.message, 'error'); }
+}
+
+async function deleteRoom(id) {
+  if (!confirm('确定删除此房间吗？')) return;
+  try {
+    await request('/api/rooms/' + id, { method: 'DELETE' });
+    showNotification('删除成功');
+    loadRooms();
+  } catch (e) { showNotification(e.message, 'error'); }
+}
+
+async function renderRoomSelection() {
+  try {
+    if (allRooms.length === 0) allRooms = await request('/api/rooms');
+    var grid = document.getElementById('roomSelection');
+    var html = '';
+    for (var i = 0; i < allRooms.length; i++) {
+      var r = allRooms[i];
+      var disabled = r.status === '维修';
+      html += '<div class="room-card ' + r.status + '" data-id="' + r.id + '" data-max="' + r.max_guests + '" onclick="selectRoom(' + r.id + ',' + disabled + ')">' +
+        '<div class="room-no">' + r.room_number + '</div>' +
+        '<div class="room-type">' + r.room_type + '</div>' +
+        '<div class="room-price">¥' + formatFen(r.price_per_night) + '/晚</div>' +
+        '<div class="room-info">' + r.max_guests + '人 · <span class="badge status-' + r.status + '">' + r.status + '</span></div>' +
+        '</div>';
+    }
+    grid.innerHTML = html;
+  } catch (e) { showNotification(e.message, 'error'); }
+}
+
+function selectRoom(id, disabled) {
+  if (disabled) { showNotification('该房间正在维修，无法预订', 'error'); return; }
+  var cards = document.querySelectorAll('.room-card');
+  for (var i = 0; i < cards.length; i++) cards[i].style.outline = '';
+  var card = document.querySelector('.room-card[data-id="' + id + '"]');
+  card.style.outline = '3px solid #667eea';
+  document.getElementById('selectedRoomId').value = id;
+}
+
+document.getElementById('bookingForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  var form = e.target;
+  var roomId = parseInt(document.getElementById('selectedRoomId').value);
+  if (!roomId) { showNotification('请选择房间', 'error'); return; }
+  var body = {
+    guest_name: form.guest_name.value,
+    guest_phone: form.guest_phone.value,
+    room_id: roomId,
+    check_in_date: form.check_in_date.value,
+    check_out_date: form.check_out_date.value,
+    guest_count: parseInt(form.guest_count.value)
+  };
+  try {
+    var booking = await request('/api/bookings', { method: 'POST', body: body });
+    showNotification('预订成功！总价 ¥' + formatFen(booking.total_price));
+    form.reset();
+    document.getElementById('selectedRoomId').value = '';
+    renderRoomSelection();
+    document.querySelector('[data-tab="bookings"]').click();
+  } catch (e) { showNotification(e.message, 'error'); }
+});
+
+async function doCheckIn(id) {
+  if (!confirm('确认办理入住？')) return;
+  try {
+    await request('/api/bookings/' + id + '/checkin', { method: 'POST' });
+    showNotification('入住办理成功');
+    loadDashboard(); loadBookings(); loadRooms();
+  } catch (e) { showNotification(e.message, 'error'); }
+}
+
+async function doCheckOut(id) {
+  var today = new Date().toISOString().split('T')[0];
+  var actualDate = prompt('请输入实际离店日期（留空用今天）', today);
+  if (actualDate === null) return;
+  try {
+    var result = await request('/api/bookings/' + id + '/checkout', { method: 'POST', body: { actual_check_out: actualDate } });
+    showNotification('退房成功！应收 ¥' + formatFen(result.total_price));
+    loadDashboard(); loadBookings(); loadRooms();
+  } catch (e) { showNotification(e.message, 'error'); }
+}
+
+updateCurrentDate();
+setInterval(updateCurrentDate, 1000);
+loadDashboard();
+</script>
+</body>
+</html>
