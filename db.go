@@ -38,6 +38,20 @@ type MonthlyStats struct {
 	TotalRevenue int    `json:"total_revenue"`
 }
 
+var ValidRoomTypes = map[string]bool{
+	"标准间": true,
+	"大床房": true,
+	"家庭房": true,
+	"套房":   true,
+}
+
+func validateRoomType(roomType string) error {
+	if !ValidRoomTypes[roomType] {
+		return fmt.Errorf("无效的房间类型: %s，允许的类型: 标准间、大床房、家庭房、套房", roomType)
+	}
+	return nil
+}
+
 var db *sql.DB
 
 func initDB() error {
@@ -141,6 +155,9 @@ func getRoomByID(id int) (*Room, error) {
 }
 
 func createRoom(r *Room) error {
+	if err := validateRoomType(r.RoomType); err != nil {
+		return err
+	}
 	result, err := db.Exec(
 		"INSERT INTO rooms (room_number, room_type, price_per_night, max_guests, status) VALUES (?, ?, ?, ?, ?)",
 		r.RoomNumber, r.RoomType, r.PricePerNight, r.MaxGuests, r.Status,
@@ -157,6 +174,9 @@ func createRoom(r *Room) error {
 }
 
 func updateRoom(r *Room) error {
+	if err := validateRoomType(r.RoomType); err != nil {
+		return err
+	}
 	_, err := db.Exec(
 		"UPDATE rooms SET room_number=?, room_type=?, price_per_night=?, max_guests=?, status=? WHERE id=?",
 		r.RoomNumber, r.RoomType, r.PricePerNight, r.MaxGuests, r.Status, r.ID,
@@ -189,12 +209,20 @@ func checkRoomAvailability(roomID int, checkIn, checkOut string, excludeBookingI
 }
 
 func createBooking(b *Booking) error {
-	room, err := getRoomByID(b.RoomID)
+	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
-	if room == nil {
+	defer tx.Rollback()
+
+	var room Room
+	err = tx.QueryRow("SELECT id, room_number, room_type, price_per_night, max_guests, status FROM rooms WHERE id = ?", b.RoomID).
+		Scan(&room.ID, &room.RoomNumber, &room.RoomType, &room.PricePerNight, &room.MaxGuests, &room.Status)
+	if err == sql.ErrNoRows {
 		return fmt.Errorf("房间不存在")
+	}
+	if err != nil {
+		return err
 	}
 	if room.Status == "维修" {
 		return fmt.Errorf("该房间正在维修，无法预订")
@@ -203,11 +231,16 @@ func createBooking(b *Booking) error {
 		return fmt.Errorf("人数超过房间最大入住人数 %d 人", room.MaxGuests)
 	}
 
-	available, err := checkRoomAvailability(b.RoomID, b.CheckInDate, b.CheckOutDate, 0)
+	var count int
+	err = tx.QueryRow(`
+		SELECT COUNT(*) FROM bookings
+		WHERE room_id = ? AND status IN ('已预订', '已入住')
+		AND check_in_date < ? AND check_out_date > ?
+	`, b.RoomID, b.CheckOutDate, b.CheckInDate).Scan(&count)
 	if err != nil {
 		return err
 	}
-	if !available {
+	if count > 0 {
 		return fmt.Errorf("该房间在指定时段已被预订")
 	}
 
@@ -226,7 +259,7 @@ func createBooking(b *Booking) error {
 	b.TotalPrice = days * room.PricePerNight
 	b.CreatedAt = time.Now().Format("2006-01-02 15:04:05")
 
-	result, err := db.Exec(
+	result, err := tx.Exec(
 		`INSERT INTO bookings (guest_name, guest_phone, room_id, check_in_date, check_out_date, guest_count, status, total_price, created_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		b.GuestName, b.GuestPhone, b.RoomID, b.CheckInDate, b.CheckOutDate, b.GuestCount, "已预订", b.TotalPrice, b.CreatedAt,
@@ -238,6 +271,11 @@ func createBooking(b *Booking) error {
 	if err != nil {
 		return err
 	}
+
+	if err = tx.Commit(); err != nil {
+		return err
+	}
+
 	b.ID = int(id)
 	b.RoomNumber = room.RoomNumber
 	b.RoomType = room.RoomType
@@ -397,9 +435,9 @@ func getTodayCheckIn() ([]Booking, error) {
 		       b.guest_count, b.status, b.total_price, b.created_at,
 		       r.room_number, r.room_type
 		FROM bookings b JOIN rooms r ON b.room_id = r.id
-		WHERE b.check_in_date = ? AND b.status IN ('已预订', '已入住')
+		WHERE b.check_in_date = date('now', 'localtime') AND b.status IN ('已预订', '已入住')
 		ORDER BY b.id DESC
-	`, today)
+	`)
 	if err != nil {
 		return nil, err
 	}
@@ -411,7 +449,9 @@ func getTodayCheckIn() ([]Booking, error) {
 		if err != nil {
 			return nil, err
 		}
-		bookings = append(bookings, *b)
+		if b.CheckInDate == today {
+			bookings = append(bookings, *b)
+		}
 	}
 	return bookings, nil
 }
@@ -423,9 +463,9 @@ func getTodayCheckOut() ([]Booking, error) {
 		       b.guest_count, b.status, b.total_price, b.created_at,
 		       r.room_number, r.room_type
 		FROM bookings b JOIN rooms r ON b.room_id = r.id
-		WHERE b.check_out_date = ? AND b.status IN ('已入住', '已退房')
+		WHERE b.check_out_date = date('now', 'localtime') AND b.status IN ('已入住', '已退房')
 		ORDER BY b.id DESC
-	`, today)
+	`)
 	if err != nil {
 		return nil, err
 	}
@@ -437,7 +477,9 @@ func getTodayCheckOut() ([]Booking, error) {
 		if err != nil {
 			return nil, err
 		}
-		bookings = append(bookings, *b)
+		if b.CheckOutDate == today {
+			bookings = append(bookings, *b)
+		}
 	}
 	return bookings, nil
 }
